@@ -1,0 +1,2 @@
+PORT=3000
+DB_URL=mongodb+srv://admin-ata:12345@cluster0.pd0kz88.mongodb.net/?retryWrites=true&w=majority
