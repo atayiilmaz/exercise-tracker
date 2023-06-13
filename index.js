@@ -108,6 +108,12 @@ app.post('/api/users/:_id/exercises', async (req ,res) => {
 
 });
 
+app.get('/api/users/:_id/logs', async(req, res) => {
+
+  
+
+});
+
 
 
 const listener = app.listen(process.env.PORT || 3000, () => {
