@@ -4,6 +4,7 @@ const cors = require('cors')
 require('dotenv').config()
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const { check } = require('express-validator');
 
 app.use(cors())
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -14,29 +15,32 @@ app.use(express.static('public'))
 mongoose.connect(process.env.DB_URL, { useNewUrlParser: true, useUnifiedTopology: true });
 
 const userSchema = mongoose.Schema({
-  username : {
-    type: String,
-    unique: true
-  },
+  "username" : String,
 }, {
-  versionKey: false
-})
+  "versionKey": false,
+});
 
 const User = mongoose.model('User', userSchema);
 
 const exerciseSchema = mongoose.Schema({
 
-  username: String,
-  description: String,
-  duration: Number,
-  date: Date,
-  userId: String
+  "username": String,
+  "description": String,
+  "duration": Number,
+  "date": Date,
 
-}, {
-  versionKey: false
 });
 
 const Exercise = mongoose.model('Exercise', exerciseSchema);
+
+const logSchema = mongoose.Schema({
+
+  "username" : String,
+  "count" : Number,
+  "log" : Array,
+});
+
+const Log = mongoose.model('Log', logSchema);
 
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html')
@@ -51,115 +55,80 @@ app.get('/api/users', async (req, res) => {
 
 app.post('/api/users', async(req,res) => {
 
-  const username = req.body.username;
+  User.find({ "username": req.body.username }).then((userData) => {
 
-  const foundUser = await User.findOne({ username });
+    if(userData.length === 0) {
+      const test = new User({
+        "_id": req.body.id,
+        "username": req.body.username,
+      })
 
-  if(foundUser) {
-    res.json(foundUser);
-  }
+      test.save().then((data) =>{ 
 
-  const user = await User.create({
+        res.json({
+          "_id": data.id,
+          "username": data.username
+        })
 
-    username,
+      }).catch((err) => {
+        console.log(err);
+      })
 
-  });
-
-  res.json(user);
-
-});
-
-
-app.post('/api/users/:_id/exercises', async (req ,res) => {
-
-  let { description, duration, date}= req.body; 
-
-  const userId = req.body[':_id'];
-
-  const foundUser = await User.findById(userId);
-
-  if(!foundUser){
-
-    res.json({ message: "No user exists" });
-  }
-
-  if(!date) {
-    date = new Date();
-  } else {
-    date = new Date(date);
-  }
-
-  await Exercise.create({
-
-    username: foundUser.username,
-    description,
-    duration,
-    date,
-    userId
-
-  });
-
-  res.send({
-    username: foundUser.username, 
-    description,
-    duration,
-    date: date.toDateString(),
-    _id: userId
-  });
-
-
-});
-
-app.get('/api/users/:_id/logs', async(req, res) => {
-
-  let {from, to, limit} = req.query;
-  const userId = req.params._id;
-  const foundUser = await User.findById(userId);
-
-  if(!foundUser) {
-    res.json({ message: 'No user exists' });
-  }
-
-  let filter = { userId };
-  let dateFilter = {};
-
-  if(from) {
-
-    dateFilter['$gte'] = new Date(from);
-  }
-  if(to) {
-    dateFilter['$lte'] = new Date(to);
-  }
-  if(from || to) {
-    filter.date = dateFilter;
-  }
-
-  if(!limit) {
-    limit = 100;
-  }
-
-  let exercises = await Exercise.find(filter).limit(limit);
-  
-  exercises.map((exercise) => {
-    
-    return {
-      description: exercise.description,
-      duration: exercise.duration,
-      date: exercise.date.toDateString()
+    } else {
+      res.json({
+        "message": "Username already exists",
+      })
     }
-  });
-  
-  res.json({
-    username: foundUser.username,
-    count: exercises.length,
-    _id: userId,
-    log: exercises
 
+  }).catch((err) => {
+    console.log(err);
   })
 
 });
 
+app.post('/api/users/:_id/exercises', async(req, res) => {
 
+  let userId = {"id": req.params._id};
+  let checkedDate = new Date(req.body.date);
+  let idToCheck = userId.id;
+
+  let noDateHandler = () => {
+    if(checkedDate instanceof Date && !isNaN(this.checkedDate)) {
+      return checkedDate;
+    } else {
+      checkedDate = new Date();
+    }
+  }
+
+
+  User.findById(idToCheck).then((data) => {
+    noDateHandler(checkedDate);
+
+    const test = new Exercise({
+      "username": data.username,
+      "description": req.body.description,
+      "duration": req.body.duration,
+      "date": checkedDate.toDateString(),
+    });
+
+    test.save().then((data) => {
+
+      res.json({
+        "username": data.username,
+        "description": data.description,
+        "duration": data.duration,
+        "_id": userId,
+      })
+
+    }).catch((err) => {
+      console.log(err);
+    })
+  }).catch((err) => {
+    console.log(err);
+  })
+
+
+});
 
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log('Your app is listening on port ' + listener.address().port)
