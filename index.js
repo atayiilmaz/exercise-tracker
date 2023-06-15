@@ -29,6 +29,8 @@ const exerciseSchema = mongoose.Schema({
   "duration": Number,
   "date": Date,
 
+},{
+  "versionKey": false,
 });
 
 const Exercise = mongoose.model('Exercise', exerciseSchema);
@@ -38,6 +40,8 @@ const logSchema = mongoose.Schema({
   "username" : String,
   "count" : Number,
   "log" : Array,
+}, {
+  "versionKey": false,
 });
 
 const Log = mongoose.model('Log', logSchema);
@@ -117,12 +121,84 @@ app.post('/api/users/:_id/exercises', async(req, res) => {
         "username": data.username,
         "description": data.description,
         "duration": data.duration,
-        "_id": userId,
+        "date": data.date.toDateString(),
+        "_id": idToCheck,
       })
 
     }).catch((err) => {
       console.log(err);
     })
+  }).catch((err) => {
+    console.log(err);
+  })
+
+
+});
+
+app.get('/api/users/:_id/logs', async(req, res) => {
+
+  let {from, to, data} = req.query;
+  let userId = {"id": req.params._id};
+  let idToCheck = userId.id;
+
+  //checkId
+  User.findById(idToCheck).then((data)=> {
+
+    var query = {
+      username: data.username
+    }
+
+    if(from !== undefined && to === undefined) {
+      query.date = { $gte: new Date(from) }
+    } else if(to !== undefined && from === undefined) {
+      query.date = { $lte: new Date(to) }
+    } else if(from !== undefined && to !== undefined) {
+      query.date = { $gte: new Date(from), $lte: new Date(to) }
+    }
+
+    let limitChecker = (limit) => {
+      let maxLimit = 100;
+      if(limit) {
+        return limit;
+      } else {
+        return maxLimit;
+      }
+    }
+
+    Exercise.find((query), null, { limit: limitChecker() }).then((docs) => {
+
+      let documents = docs;
+      let loggedArray = documents.map((item) => {
+        return {
+          "description": item.description,
+          "duration": item.duration,
+          "log": item.date.toDateString()
+        }
+      })
+
+      const test = new Log({
+        "username": data.username,
+        "count": loggedArray.length,
+        "log": loggedArray
+      });
+
+      test.save().then((data) => {
+
+        res.json({
+          "_id": idToCheck,
+          "username": data.username,
+          "count": data.count,
+          "log": loggedArray
+        })
+
+      }).catch((err) => {
+        console.log(err);
+      })
+
+    }).catch((err) => {
+      console.log(err);
+    })
+
   }).catch((err) => {
     console.log(err);
   })
