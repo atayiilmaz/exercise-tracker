@@ -104,7 +104,6 @@ app.post('/api/users/:_id/exercises', async(req, res) => {
     }
   }
 
-
   User.findById(idToCheck).then((data) => {
     noDateHandler(checkedDate);
 
@@ -132,12 +131,11 @@ app.post('/api/users/:_id/exercises', async(req, res) => {
     console.log(err);
   })
 
-
 });
 
 app.get('/api/users/:_id/logs', async(req, res) => {
 
-  let {from, to, data} = req.query;
+  let {from, to, limit} = req.query;
   let userId = {"id": req.params._id};
   let idToCheck = userId.id;
 
@@ -165,14 +163,14 @@ app.get('/api/users/:_id/logs', async(req, res) => {
       }
     }
 
-    Exercise.find((query), null, { limit: limitChecker() }).then((docs) => {
+    Exercise.find((query)).limit(limitChecker(+limit)).then((docs) => {
 
       let documents = docs;
       let loggedArray = documents.map((item) => {
         return {
           "description": item.description,
           "duration": item.duration,
-          "log": item.date.toDateString()
+          "date": item.date.toDateString()
         }
       })
 
@@ -202,7 +200,6 @@ app.get('/api/users/:_id/logs', async(req, res) => {
   }).catch((err) => {
     console.log(err);
   })
-
 
 });
 
